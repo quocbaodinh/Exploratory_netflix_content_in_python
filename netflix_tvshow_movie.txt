@@ -1,0 +1,87 @@
+#Analysis some informations on data Netflix about shows and movies
+
+#import library
+import pandas as pd 
+import numpy as np
+import matplotlib.pyplot as plt
+%matplotlib inline
+
+#reading data
+df=pd.read_csv(r'E:\Data Analyst\Data\Netflix\netflixData.csv')
+#view data
+print(df.head())
+df.info()
+
+#drop duplicate and check null value
+df.drop_duplicates(inplace=True)
+df.isnull().sum()
+
+#drop null value
+df=df.drop(['Director','Date Added'], axis = 1)
+df=df.dropna(subset=['Cast','Production Country','Release Date','Rating','Duration','Imdb Score'])
+
+#Check null value again
+df.isnull().sum()
+
+#Compare content type on Netflix
+content_type = df['Content Type'].value_counts()
+print(content_type)
+content_type.plot(kind = 'pie',autopct='%1.1f%%',legend = True,explode=(0, 0.02),title='Content Type on Netflix')
+plt.show()
+
+#Show release year and amount content
+df['Release Date']=df['Release Date'].astype(str)
+new_content = df.groupby(['Content Type','Release Date'])['Release Date'].count().unstack('Content Type')
+new_content = new_content.sort_values(ascending = True, by = 'Release Date')
+new_content.plot(kind='bar', title='Content Release Year',figsize=(20,10)).set_xlabel('Year')
+plt.show()
+
+#Check data in column 'Production Country'
+print(df['Production Country'].value_counts())
+#There are multiple countries in single columns 'Production Country' so we need create a new column that will contain only the first country
+df['Official Country'] = df['Production Country'].str.split(',',expand = True)[0]
+print(df['Official Country'].value_counts())
+
+#Show amonut total content each country
+country_group = df.groupby(['Content Type','Official Country'])['Official Country'].count().unstack('Content Type')
+country_group.columns = ['Movie', 'TV Show']
+country_group['Total'] = country_group['Movie']+country_group['TV Show']
+country_group = country_group.sort_values(ascending = False, by = 'Total')
+print(country_group)
+country_group[:10].plot(kind = 'bar', title = 'Production Country', y =['TV Show','Movie'], figsize=(10,4)).set_ylabel('Amount')
+plt.show()
+
+#Show total content each category raing
+country_group = df.groupby(['Content Type','Rating'])['Rating'].count().unstack('Content Type')
+country_group.columns = ['Movie', 'TV Show']
+country_group['Total'] = country_group['Movie']+country_group['TV Show']
+country_group = country_group.sort_values(ascending = False, by = 'Total')
+print(country_group)
+country_group.plot(kind = 'bar', title = 'Rating', y =['TV Show','Movie'], figsize=(10,4)).set_ylabel('TV Show/Movie')
+plt.show()
+
+#Show top film or tv show has high 'Imdb scrore'
+df_topRated=df.loc[df['Imdb Score']>= '9.0/10',['Title','Official Country','Release Date','Imdb Score','Content Type']]
+df_topRated=df_topRated.sort_values(ascending = False, by = 'Imdb Score')
+print(df_topRated)
+
+#Show top film or tv show has low 'Imdb scrore'
+df_lowRated=df.loc[df['Imdb Score'] <= '2.0/10',['Title','Official Country','Release Date','Imdb Score','Content Type']]
+df_lowRated=df_lowRated.sort_values(ascending = True, by = 'Imdb Score')
+print(df_lowRated)
+
+#Check data in 'Genres' columns
+print(df['Genres'].value_counts())
+#There're maybe multiple genres in each content so that we need split genres and statistic them 
+genres = ", ".join(df['Genres']).split(', ')
+#print(genres)
+from collections import Counter
+cnt = Counter()
+for genre in genres:
+    cnt[genre] +=1
+#Select top 20 genres produced the most
+top_genres = cnt.most_common(20)
+df_top_genres = pd.DataFrame(data = top_genres, columns=['Genre','Count'])
+df_top_genres.sort_values(ascending = True, by = 'Count', inplace = True)
+df_top_genres.plot.barh(x='Genre',title ='Top Produced Genres',width=0.7,legend = False, figsize=(10,10))
+plt.show()
